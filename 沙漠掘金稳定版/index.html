@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沙漠掘金</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+        
+        body {
+            background-color: rgb(248, 242, 215);
+        }
+        
+        button {
+            background-color: rgb(91, 204, 238);
+        }
+        
+        .box {
+            float: left;
+            position: relative;
+        }
+        
+        .select {
+            position: absolute;
+            background-color: white;
+            width: 50px;
+            height: 70px;
+            font-size: 20px;
+            font-weight: bolder;
+            line-height: 20px;
+        }
+        
+        .food {
+            color: orange;
+        }
+        
+        .water {
+            color: blue;
+        }
+        
+        #material img {
+            width: 50px;
+            height: 50px;
+        }
+        
+        #warn {
+            color: red;
+            font-size: 40px;
+        }
+        
+        #map {
+            /* 这个定下来后就开始定位地图块显示位置 */
+            width: 1332px;
+            height: 914px;
+        }
+        
+        #canGo img {
+            width: 100;
+            height: 100;
+        }
+        
+        .now {
+            border: blue 10px solid;
+        }
+        
+        .select:hover {
+            border: green 10px solid;
+            z-index: 1;
+        }
+        
+        #interface button {
+            height: 40px;
+            font-size: 20px;
+        }
+        
+        button:hover {
+            background-color: rgb(30, 44, 238);
+        }
+        
+        #interface button:hover {
+            background-color: rgb(30, 44, 238);
+        }
+        
+        #material button {
+            width: 40px;
+        }
+        
+        .num {
+            font-size: 30px;
+            font-weight: bolder;
+        }
+        
+        .useTool button {
+            height: 20px;
+            width: 70px;
+            font-size: 20px;
+            line-height: 20px;
+        }
+        
+        #mention {
+            font-size: 20px;
+            color: red;
+        }
+        
+        #goods:nth-of-type(5) {
+            color: orange;
+        }
+        
+        #goods:nth-of-type(6) {
+            color: blue;
+        }
+        
+        #amount button {
+            width: 50px;
+        }
+        
+        .tag {
+            display: inline-block;
+            width: 150px;
+        }
+        
+        .eachMount {
+            color: red;
+            font-size: 30px;
+            font-weight: bolder;
+        }
+        
+        #unStart {
+            color: red;
+            font-size: 20px;
+        }
+    </style>
+    <!-- 可能找类似于python的exec函数来创建变量更好，另外确定图块位置最好配合鼠标点击事件自动获取位置更高效 -->
+</head>
+
+<body onselectstart="return false;">
+    <!-- 当然要app初始化完所有变量才渲染游戏页面 -->
+    <div class="main" id="app" v-if="isReady">
+
+
+
+        <!-- 图形大界面 -->
+        <div class="box" id="UI">
+            <!-- 可以去的地方的选择 -->
+            <div v-if="isGaming" id="canGo">
+                <div class="select now" @click="nextRound(now)" :style="getPosStyle(now)">
+                    <img :src="getImgSrc(now.weather)" width="50" height="50">
+                    <span class="food">{{now.weather.needFood}}</span>
+                    <span class="water">{{now.weather.needWater}}</span>
+                    <span class="useTool" v-show="'沙尘暴'==now.weather.name||'高温沙尘暴'==now.weather.name">
+                        <button @click="useTent()" v-show="tent.num>0">用帐篷</button>
+                        <button @click="useCompass()" v-show="compass.num>0">用指南</button>
+                    </span>
+
+                </div>
+                <div class="select next" @click="nextRound(item)" v-for="(item,index) in next" v-show="0==missing" :style="getPosStyle(item)">
+                    <img :src=" getImgSrc(item.weather) " width="50 " height="50 ">
+                    <span class="food ">{{item.weather.needFood}}</span>
+                    <span class="water ">{{item.weather.needWater}}</span>
+                    <span class="useTool" v-show="'沙尘暴'==item.weather.name||'高温沙尘暴'==item.weather.name">
+                        <button @click="useTent()" v-show="tent.num>0">用帐篷</button>
+                        <button @click="useCompass()" v-show="compass.num>0">用指南针</button>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 游戏背景地图图片 -->
+            <img src="img/地图.jpg " id="map">
+        </div>
+
+
+
+
+
+        <!-- 物资和信息界面 -->
+        <div class="box" id="interface">
+            <!-- 主菜单栏 -->
+            <div id="toolBar">
+                <button @click="startGame() " v-show="false==isGaming ">开始游戏</button>
+                <button @click="showAuthor() ">关于我们</button>
+                <button @click="helpIfo() ">帮助信息</button>
+                <button onclick="location.reload()">重新开始</button>
+            </div>
+            <div id="amount">
+                <button @click="amount=1">1</button>
+                <button @click="amount=10">10</button>
+                <button @click="amount=100">100</button>
+                <button @click="amount=1000">1000</button>
+                <button @click="amount=10000">10000</button>
+                <span>当前每次操作
+                    <span class="eachMount">{{amount}}</span> 份物品
+                </span>
+            </div>
+
+            <!-- 物资列表 -->
+            <div id="material">
+                <!-- 金币和背包 -->
+                <div v-for="(item,index) in notSale" id="notSale">
+                    <span><img :src="getImgSrc(item)"></span>
+                    <span class="tag">
+                        <span>{{item.name}}</span>
+                    <span class="num">{{item.num}}</span>
+                    </span>
+                    <span v-show="false==isGaming">
+                        <button @click="changeItem(item,1*amount)" >+</button>
+                        <button @click="changeItem(item,-1*amount)" >-</button>
+                    </span>
+                </div>
+                <!-- 可买卖的商品 -->
+                <div v-for="(item,index) in goods" id="goods">
+                    <span><img :src="getImgSrc(item)"></span>
+                    <span class="tag">
+                        <span>{{item.name}}</span>
+                    <span class="num">{{item.num}}</span>
+                    </span>
+                    <span>
+                        <button @click="buy(item,rate)"  v-show="isContain(now.area,item.canBuy)">买</button>
+                        <button @click="sell(item)" v-show="'大本营'==now.area">卖</button>
+                    </span>
+                    <span>
+                        单价{{item.price*rate}}单重{{item.weight}}
+                    </span>
+                    <span>
+                        <button @click="discard(item)" v-show="isGaming">丢</button>
+                    </span>
+                </div>
+            </div>
+
+
+            <!-- 每个地点的操作选项 -->
+            <div v-show="isGaming" id="eachDay">
+                <div id="operation">
+                    <button @click="endGame()" v-show="'大本营'==now.area">从大本营结束探险</button>
+                    <button @click="drawCard()" v-show="false==searched&&'帝王陵'==now.area">探索帝王陵</button>
+                </div>
+
+            </div>
+
+            <!-- 提示信息 -->
+            <div id="tip">
+                <!-- 不在游戏时的信息 -->
+                <div v-show="false==isGaming" id="unStart">
+                    游戏开始前自行调整物资作为难度调整
+                </div>
+                <!-- 游戏中的信息 -->
+                <div v-show="isGaming">
+                    <div id="record">
+                        第{{day}}天，位置：{{now.name}}，区域：{{now.area}}，物价是{{rate}}倍
+                    </div>
+                    <div id="mention">
+                        <p v-show="day>25">理论上已经超过25天了</p>
+                        <p v-show="'绿洲'==now.area" style="color:green;">在绿洲可以免费打水</p>
+                        <p v-show="'金山'==now.area" style="color:green;">在金山每天挖60金矿</p>
+                        <p v-show="food.num+water.num<=25">食物和水较少了</p>
+                        <p v-show="'村庄'==now.area">村庄只能买食物和水价格翻倍</p>
+                    </div>
+                    <div id="warn">
+                        <p v-show="missing>0">迷路中还剩{{missing}}天</p>
+                        <p v-show="food.num<=9 ">食物即将用完</p>
+                        <p v-show="water.num<=9 ">水即将用完</p>
+                        <p v-show="tent.num+compass.num<=5">帐篷和指南针即将用完</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script src="vue.js"></script>
+    <script>
+        // 地图设置
+        {
+            // 地图块类
+            var t = function(name, left = 100, top = 100) {
+                this.name = name;
+                this.left = left;
+                this.top = top;
+                this.weather = null;
+                this.area = null;
+                this.n = [];
+            };
+
+
+            // 地图块变量生成
+            {
+                var s1 = new t("s1");
+                var s2 = new t("s2");
+                var s3 = new t("s3");
+                var s4 = new t("s4");
+                var s5 = new t("s5");
+                var s6 = new t("s6");
+                var s7 = new t("s7");
+                var s8 = new t("s8");
+                var s9 = new t("s9");
+                var s10 = new t("s10");
+                var s11 = new t("s11");
+                var s12 = new t("s12");
+                var s13 = new t("s13");
+                var s14 = new t("s14");
+                var s15 = new t("s15");
+                var s16 = new t("s16");
+                var s17 = new t("s17");
+                var s18 = new t("s18");
+                var s19 = new t("s19");
+                var s20 = new t("s20");
+                var s21 = new t("s21");
+                var s22 = new t("s22");
+                var s23 = new t("s23");
+                var s24 = new t("s24");
+                var s25 = new t("s25");
+                var s26 = new t("s26");
+
+                var c1 = new t("c1");
+                var c2 = new t("c2");
+                var c3 = new t("c3");
+                var c4 = new t("c4");
+                var c5 = new t("c5");
+                var c6 = new t("c6");
+                var c7 = new t("c7");
+
+                var l1 = new t("l1");
+                var l2 = new t("l2");
+
+                var home = new t("大本营");
+                var mine = new t("金山");
+                var tomb = new t("帝王陵");
+            }
+
+
+            // 地图块列表
+            var tArr = [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23, s24, s25, s26, c1, c2, c3, c4, c5, c6, c7, l1, l2, home, tomb, mine];
+
+
+            // 设置地图块的位置属性
+            {
+                var posArr = [207, 621, 386, 727, 524, 640, 361, 530, 159, 504, 665, 790, 803, 733, 784, 579, 651, 592, 482, 434, 170, 380, 327, 365, 188, 297, 194, 209, 332, 211, 505, 182, 649, 173, 777, 139, 857, 236, 908, 315, 886, 389, 861, 458, 940, 563, 1137, 741, 1021, 434, 1165, 233, 531, 774, 664, 685, 964, 721, 1101, 584, 1143, 458, 1117, 332, 336, 132, 684, 468, 445, 292, 161, 768, 674, 321, 1020, 184];
+                for (i = 0; i < tArr.length; i++) {
+                    let j = 2 * i;
+                    tArr[i].left = posArr[j];
+                    tArr[i].top = posArr[j + 1];
+                };
+            }
+
+
+            // 设置地图块的区域属性
+            {
+                for (i = 0; i < 26; i++) {
+                    tArr[i].area = "沙漠";
+                }
+                for (i = 26; i < 33; i++) {
+                    tArr[i].area = "村庄";
+                }
+                l1.area = "绿洲";
+                l2.area = "绿洲";
+                home.area = "大本营";
+                tomb.area = "帝王陵";
+                mine.area = "金山";
+            }
+
+            // 设置地图块的相邻路线属性
+            {
+                var connect = function(a, b) {
+                    a.n.push(b);
+                    b.n.push(a);
+                };
+                var connectArr = [home, s1, home, s2, s1, s2, s1, s4, s1, s5, s4, s5, s5, s11, s4, s11, s11, s12, s11, s13, s13, s14, s13, s15, s14, c7, s14, s15, s15, c7, s13, l2, s15, l2, s15, s16, c7, s16, s16, l2, s16, s17, s12, s10, s4, s10, s2, s4, s2, c1, s2, s3, s4, s3, s3, s10, s12, l2, s10, l2, s3, c1, c1, s6, c1, c2, s3, c2, s3, s9, s9, s10, tomb, l2, tomb, s16, tomb, s17, tomb, s18, tomb, s19, tomb, s20, tomb, s21, tomb, s10, tomb, l1, s10, l1, s6, s7, c2, s6, c2, s8, s8, s9, l1, s9, l1, s8, l1, s21, l1, s22, c2, s7, c2, s9, s7, s24, s7, c3, s7, s8, s24, c4, s24, c3, c3, c4, c3, s23, s4, s12, s12, s13, s8, s22, s8, s23, s22, s21, s22, s25, s22, s23, s21, s20, s21, s25, s20, s19, s20, s25, s20, c6, s18, s17, s18, s19, s18, mine, mine, s19, mine, s26, s19, s26, s19, c6, s26, c6, s25, c6, s25, c5, s25, c4, s25, s23, s23, c4, c4, c5, c5, c6];
+
+                for (i = 0; i < connectArr.length - 1; i += 2) {
+                    connect(connectArr[i], connectArr[i + 1]);
+                };
+            }
+
+
+        }
+
+
+
+        // 动态绑定的vue数据
+        var app = new Vue({
+            el: "#app",
+            data: {
+                // 需要初始化的参数
+                now: null,
+                next: [],
+                notSale: [], //不可买卖的金币和背包
+                goods: [],
+                rate: 1,
+
+                // 不用初始化的参数
+                amount: 1, //每次交易的份量
+                isTenting: false,
+                isCompassing: false,
+                isGaming: false,
+                searched: false,
+                missing: 0,
+                map: tArr,
+                isReady: false,
+                day: 1,
+                money: {
+                    name: "金币",
+                    price: 1,
+                    weight: 0,
+                    num: 200
+                },
+                load: {
+                    name: "背包",
+                    price: 0,
+                    weight: 0,
+                    num: 200
+                },
+                tent: {
+                    name: "帐篷",
+                    price: 130,
+                    weight: 20,
+                    num: 6,
+                    canBuy: ["大本营"],
+                },
+                compass: {
+                    name: "指南针",
+                    price: 100,
+                    weight: 10,
+                    num: 5,
+                    canBuy: ["大本营"],
+                },
+                food: {
+                    name: "食物",
+                    vPrice: 20,
+                    price: 10,
+                    weight: 10,
+                    num: 27,
+                    canBuy: ["大本营", "村庄"],
+                },
+                water: {
+                    name: "水",
+                    // 村庄价钱和绿洲价钱
+                    cPrice: 50,
+                    lPrice: 0,
+                    price: 25,
+                    weight: 50,
+                    num: 27,
+                    canBuy: ["大本营", "村庄", "绿洲"],
+                },
+                gold: {
+                    name: "金矿",
+                    price: 100,
+                    weight: 1,
+                    num: 0,
+                    canBuy: ["大本营"],
+                },
+
+                weather: [{
+                    name: "晴天",
+                    needWater: 1,
+                    needFood: 1,
+                }, {
+                    name: "沙尘暴",
+                    needWater: 2,
+                    needFood: 5,
+                }, {
+                    name: "高温",
+                    needWater: 3,
+                    needFood: 1,
+                }, {
+                    name: "高温沙尘暴",
+                    needWater: 5,
+                    needFood: 6,
+                }],
+            },
+
+
+            methods: {
+                // 渲染页面函数完成app的所有数据初始化
+                readyHtml: function() {
+                    this.changeWeather();
+                    // 这个分类是能否买卖和丢弃
+                    this.goods = [this.tent, this.compass, this.food, this.water, this.gold];
+                    this.notSale = [this.money, this.load];
+                    this.moveTo(home); // 这个初始化出发位置
+                    this.rate = this.getRate();
+
+                    this.isReady = true; // 这个放在最后，当所有都初始化后开始渲染页面
+                },
+                // 修改物品数量
+                changeItem(item, num) {
+                    if (item.num + num >= 0) {
+                        item.num += num;
+                    }
+                },
+                // 买物品
+                buy: function(item, rate, num = this.amount) {
+                    var needLoad = num * item.weight;
+                    if (this.load.num - needLoad < 0) {
+                        return;
+                    }
+                    var needMoney = num * item.price * rate;
+                    if (this.money.num - needMoney < 0) {
+                        return;
+                    }
+                    item.num += num;
+                    this.money.num -= needMoney;
+                    this.load.num -= needLoad;
+                },
+                // 卖物品
+                sell: function(item, num = this.amount) {
+                    if (item.num - num >= 0) {
+                        item.num -= num;
+                        this.money.num += num * item.price;
+                        this.load.num += num * item.weight;
+                    }
+                },
+                // 丢弃物品
+                discard: function(item, num = this.amount) {
+                    if (item.num - num >= 0) {
+                        item.num -= num;
+                        this.load.num += num * item.weight;
+                    }
+                },
+                // 为地图每个格子改变天气
+                changeWeather: function() {
+                    this.map.forEach(element => {
+                        var index = Math.floor((Math.random() * this.weather.length));
+                        element.weather = this.weather[index];
+                    });
+                },
+                // 移动即更替现在和下一步的地图块
+                moveTo: function(des) {
+                    this.now = des;
+                    this.next = this.now.n;
+
+                },
+                // 下一回合
+                nextRound: function(des) {
+                    this.moveTo(des);
+                    this.day += 1;
+                    this.rate = this.getRate();
+                    this.amount = 1;
+
+                    // 计算帐篷指南针影响
+                    this.calTentCompass(des);
+                    // 计算消耗
+                    this.food.num -= des.weather.needFood;
+                    this.water.num -= des.weather.needWater;
+                    // 计算空出来的容量
+                    this.load.num += des.weather.needFood * this.food.weight + des.weather.needWater * this.water.weight;
+                    // 每走一步看看是否结束游戏
+                    this.checkDie();
+                    this.changeWeather();
+                    // 是否挖矿
+                    if (this.now.name == mine.name) {
+                        this.gold.num += 60;
+                    }
+                    // 计算迷路
+                    if (this.missing > 0) {
+                        this.missing -= 1;
+                    }
+                    this.searched = false;
+                },
+                // 获得位置样式字符串
+                getPosStyle: function(item) {
+                    var temp = "left:" + item.left + "px;" + "top:" + item.top + "px;";
+                    return temp;
+                },
+                // 获得图片地址字符串
+                getImgSrc: function(item) {
+                    var temp = "img/" + item.name + ".jpg";
+                    return temp;
+                },
+                // 检查并执行死亡情况
+                checkDie: function() {
+                    if (this.food.num < 0) {
+                        alert("在第" + this.day + "天因缺食物而死亡");
+                        location.reload();
+                    } else if (this.water.num < 0) {
+                        alert("在第" + this.day + "天因缺水而死亡");
+                        location.reload();
+                    }
+                },
+                startGame: function() {
+                    this.isGaming = true;
+                    this.amount = 1;
+                },
+                // 自己写的元素是否包含在数组里面的基础函数
+                isContain: function(e, arr) {
+                    for (i = 0; i < arr.length; i++) {
+                        if (e == arr[i]) {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                getRate: function() {
+                    if ("绿洲" == this.now.area) {
+                        return 0;
+                    } else if ("大本营" == this.now.area) {
+                        return 1;
+                    } else if ("村庄" == this.now.area) {
+                        return 2;
+                    } else {
+                        return NaN;
+                    }
+                },
+                // 在大本营自行结束游戏
+                endGame: function() {
+                    this.sellAllGold();
+                    alert("结束冒险，折合获得\n" + this.money.num + "\n金币");
+                    location.reload();
+                },
+                useTent: function() {
+                    if (this.tent.num > 0) {
+                        this.tent.num -= 1;
+                        this.isTenting = true;
+                        this.load.num += this.tent.weight;
+                    }
+
+                },
+                useCompass: function() {
+                    if (this.compass.num > 0) {
+                        this.compass.num -= 1;
+                        this.isCompassing = true;
+                        this.load.num += this.compass.weight;
+                    }
+
+                },
+                // 计算帐篷和指南针影响
+                calTentCompass: function(des) {
+                    if ("沙尘暴" == des.weather.name || "高温沙尘暴" == des.weather.name) {
+                        this.missing = 3;
+                        if (this.isTenting) {
+                            this.food.num += 4;
+                            this.water.num += 1;
+                            this.missing = 0;
+                        }
+                        if (this.isCompassing) {
+                            this.missing = 0;
+                        }
+                    }
+                    // 初始化帐篷和指南针使用
+                    this.isCompassing = false;
+                    this.isTenting = false;
+                },
+                showAuthor: function() {
+                    alert("版本：1.0");
+                },
+                helpIfo: function() {
+                    let info = "在帝王陵探索得到的物品如果没有容量会自动丢弃";
+                    info += "\n帐篷和指南针防止迷路\n按5刷新网页可以立即重启游戏\n帐篷能减少4食物1水的消耗";
+                    alert(info);
+                },
+                // 抽卡碰运气
+                drawCard: function() {
+                    var index = Math.floor((Math.random() * 4));
+                    this.missing = 1;
+                    this.searched = true;
+                    switch (index) {
+                        case 0:
+                            alert("什么都没找到，迷路1天");
+                            break;
+                        case 1:
+                            alert("找到600金币，迷路1天");
+                            this.money.num += 600;
+                            break;
+                        case 2:
+                            alert("找到7份食物7份水，迷路1天");
+                            for (i = 0; i < 7; i++) {
+                                this.buy(this.food, 0);
+                                this.buy(this.water, 0);
+                            }
+                            break;
+                        case 3:
+                            alert("找到2帐篷2指南针，迷路1天");
+                            for (i = 0; i < 2; i++) {
+                                this.buy(this.tent, 0);
+                                this.buy(this.compass, 0);
+                            }
+                            break;
+                    }
+                },
+                // 卖完所有矿石
+                sellAllGold: function() {
+                    this.sell(this.gold, this.gold.num);
+                },
+            }
+        });
+        // 必然要这个初始化app的数据
+        app.readyHtml();
+    </script>
+</body>
+
+</html>
